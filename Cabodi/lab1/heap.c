@@ -1,5 +1,6 @@
 #include "heap.h"
 #include <stdlib.h>
+#include <string.h>
 
 // Size of blocks will be a multiple of ALIGNMENT (power of 2)
 #define ALIGNMENT 8
@@ -19,10 +20,12 @@ struct heap_s {
 	size_t free_size;
 	node_t* free_blks;
 	node_t* used_blks;
+	node_t* dfrg_blks;
 	heap_policy_t policy;
 };
 
 void listDestroy(node_t*);
+node_t* listCopy(node_t*);
 
 /*
  * Creates a new heap
@@ -54,6 +57,7 @@ heap_t* heapCreate(size_t heapSize) {
 	newHeap->free_blks->size = heapSize;
 	newHeap->free_blks->next = NULL;
 	newHeap->used_blks = NULL; // No used blocks
+	newHeap->dfrg_blks = NULL;
 	newHeap->policy = first_fit; // Default policy
 
 	return newHeap;
@@ -65,6 +69,8 @@ heap_t* heapCreate(size_t heapSize) {
 void heapDestroy(heap_t* h) {
 	listDestroy(h->free_blks);
 	listDestroy(h->used_blks);
+	h->free_blks = NULL;
+	h->used_blks = NULL;
 	free(h->start);
 	free(h);
 }
@@ -196,13 +202,15 @@ void heapFree(heap_t* h, void* p) {
 		prev = node;
 		node = node->next;
 	}
-	// Insert between prev and node and compact
+	// Insert between prev and node
 	freeNode->next = node;
 	if (prev == NULL) {
 		h->free_blks = freeNode;
 	} else {
 		prev->next = freeNode;
 	}
+	h->free_size += freeNode->size;
+	// Compact free list
 	if (prev != NULL && (freeNode->start == prev->start + prev->size)) {
 		prev->size += freeNode->size;
 		prev->next = freeNode->next;
@@ -221,14 +229,60 @@ void heapSetPolicy(heap_t* h, heap_policy_t policy) {
 }
 
 void heapDefrag(heap_t* h) {
-	// TODO
+	node_t* node;
+	void* prev;
+	if (h->used_blks == NULL) return;
+	// Copy and adjust used list moving blocks in memory
+	node = h->used_blks;
+	prev = h->start;
+	h->dfrg_blks = listCopy(h->used_blks);
+	while (node != NULL) {
+		if (prev != node->start) {
+			node->start = memmove(prev, node->start, node->size);
+		}
+		prev = node->start + node->size;
+		node = node->next;
+	}
+	// Adjust free list (one block at the end of the heap, if any)
+	if (h->free_blks != NULL) {
+		h->free_blks->start = h->start + h->size - h->free_size;
+		h->free_blks->size = h->free_size;
+		listDestroy(h->free_blks->next);
+		h->free_blks->next = NULL;
+	}
+}
+
+node_t* listCopy(node_t* list) {
+	node_t* copy = NULL;
+	node_t* node;
+	while (list != NULL) {
+		if (copy == NULL) {
+			copy = (node_t*)malloc(sizeof(node_t));
+			node = copy;
+		} else {
+			node->next = (node_t*)malloc(sizeof(node_t));
+			node = node->next;
+		}
+		node->start = list->start;
+		node->size = list->size;
+		node->next = NULL;
+		list = list->next;
+	}
+	return copy;
 }
 
 void* heapNewPointer(heap_t* h, void* p) {
-	// TODO
+	node_t* node = h->dfrg_blks;
+	node_t* newNode = h->used_blks;
+	while(node != NULL) {
+		if (node->start == p) return newNode->start;
+		node = node->next;
+		newNode = newNode->next;
+	}
 	return NULL;
 }
 
 void heapDefragClose(heap_t* h) {
-	// TODO
+	listDestroy(h->dfrg_blks);
+	h->dfrg_blks = NULL;
 }
