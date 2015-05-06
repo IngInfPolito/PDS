@@ -29,7 +29,7 @@ $(OUTCM): $(CMSRC) $(HSRC)
 $(OUTCD): $(CDSRC) $(HSRC)
 	$(CC) $(CCFLAGS) $(CDSRC) -o $(OUTCD)
 
-debug: $(CSRC) $(HSRC)
+debug: $(CSRC) $(CMSRC) $(CDSRC) $(HSRC)
 	$(CC) $(CCDFLAGS) $(CSRC) -o $(OUTC)
 	$(CC) $(CCDFLAGS) $(CMSRC) -o $(OUTCM)
 	$(CC) $(CCDFLAGS) $(CDSRC) -o $(OUTCD)
