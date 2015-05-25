@@ -78,5 +78,7 @@ void menu(char *argstr);
 /* The main function, called from start.S. */
 void kmain(char *bootstring);
 
+/* The hello function for ASST0 */
+void hello(void);
 
 #endif /* _TEST_H_ */
