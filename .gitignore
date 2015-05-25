@@ -7,5 +7,23 @@
 # Unignore all dirs
 !*/
 
-# Unignore makefiles
+# Unignore conf and makefiles
 !Makefile
+!config
+!configure
+!ASST0
+!ASST1
+!ASST2
+!ASST2-OPT
+!ASST3
+!ASST3-OPT
+!ASST4
+!ASST5
+
+# Ignore defs.mk
+defs.mk
+
+# Ignore object files and build directories
+build/
+*.o
+kern/compile/
