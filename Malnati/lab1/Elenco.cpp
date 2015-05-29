@@ -9,7 +9,7 @@ Elenco::Elenco(const Elenco& e) : head(nullptr), tail(nullptr), s(0) {
 }
 
 void Elenco::copyList(const Pnode* pn) {
-	Pnode* pncopy;
+	Pnode* pncopy = nullptr;
 	while (pn != nullptr) {
 		if (head == nullptr) {
 			head = new Pnode;

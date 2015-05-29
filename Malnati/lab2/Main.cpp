@@ -1,4 +1,3 @@
-#include <tchar.h>
 #include <iostream>
 
 #include "Libro.h"
@@ -8,7 +7,7 @@
 
 using namespace std;
 
-int main(int argc, _TCHAR* argv[]) {
+int main(int argc, char* argv[]) {
 	Libro* l = new Libro("l");
 	Capitolo* c1 = new Capitolo();
 	Capitolo* c2 = new Capitolo();

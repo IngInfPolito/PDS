@@ -9,7 +9,7 @@ private:
 	const std::string titolo;
 
 public:
-	Libro(char* titolo);
+	Libro(const char* titolo);
 	Libro(std::string titolo);
 
 	virtual const std::string& getTitolo();

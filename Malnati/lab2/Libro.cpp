@@ -2,7 +2,7 @@
 #include "Capitolo.h"
 #include "bad_hierarchy.h"
 
-Libro::Libro(char* titolo) : titolo(titolo) { }
+Libro::Libro(const char* titolo) : titolo(titolo) { }
 Libro::Libro(std::string titolo) : titolo(titolo) { }
 
 const std::string& Libro::getTitolo() {

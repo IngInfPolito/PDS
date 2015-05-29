@@ -1,4 +1,3 @@
-#include <tchar.h>
 #include <iostream>
 
 #include "Persona.h"
@@ -6,7 +5,7 @@
 
 using namespace std;
 
-int main(int argc, _TCHAR* argv[]) {
+int main(int argc, char* argv[]) {
 	Elenco e1;
 	e1.add(Persona("a", "b"));
 	e1.add(Persona("c", "d"));
