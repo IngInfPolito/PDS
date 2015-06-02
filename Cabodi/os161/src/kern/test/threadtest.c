@@ -39,6 +39,8 @@
 #define NTHREADS  8
 
 static struct semaphore *tsem = NULL;
+static struct semaphore *phase2sem = NULL;
+static struct semaphore *donesem = NULL;
 
 static
 void
@@ -47,6 +49,14 @@ init_sem(void)
 	if (tsem==NULL) {
 		tsem = sem_create("tsem", 0);
 		if (tsem == NULL) {
+			panic("threadtest: sem_create failed\n");
+		}
+		phase2sem = sem_create("phase2sem", 0);
+		if (phase2sem == NULL) {
+			panic("threadtest: sem_create failed\n");
+		}
+		donesem = sem_create("donesem", 0);
+		if (donesem == NULL) {
 			panic("threadtest: sem_create failed\n");
 		}
 	}
@@ -87,10 +97,12 @@ quietthread(void *junk, unsigned long num)
 	(void)junk;
 
 	putch(ch);
+	V(tsem);
+	P(phase2sem);
 	for (i=0; i<200000; i++);
 	putch(ch);
 
-	V(tsem);
+	V(donesem);
 }
 
 static
@@ -112,8 +124,17 @@ runthreads(int doloud)
 		}
 	}
 
+	// First phase
 	for (i=0; i<NTHREADS; i++) {
 		P(tsem);
+	}
+	if (!doloud) {
+		for (i=0; i<NTHREADS; i++) {
+			V(phase2sem);
+		}
+		for (i=0; i<NTHREADS; i++) {
+			P(donesem);
+		}
 	}
 }
 

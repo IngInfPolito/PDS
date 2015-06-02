@@ -61,6 +61,7 @@ static struct wchan *waitchans[NWAITCHANS];  /* N distinct wait channels */
 static volatile int wakerdone;
 static struct semaphore *wakersem;
 static struct semaphore *donesem;
+static struct semaphore *printsem;
 
 static
 void
@@ -72,6 +73,7 @@ setup(void)
 	if (wakersem == NULL) {
 		wakersem = sem_create("wakersem", 1);
 		donesem = sem_create("donesem", 0);
+		printsem = sem_create("printsem", 1);
 		for (i=0; i<NWAITCHANS; i++) {
 			snprintf(tmp, sizeof(tmp), "wc%d", i);
 			waitchans[i] = wchan_create(kstrdup(tmp));
@@ -96,7 +98,9 @@ sleepalot_thread(void *junk, unsigned long num)
 			wchan_lock(w);
 			wchan_sleep(w);
 		}
+		P(printsem);
 		kprintf("[%lu]", num);
+		V(printsem);
 	}
 	V(donesem);
 }
@@ -196,7 +200,9 @@ compute_thread(void *junk1, unsigned long num)
 			tot += m3->m[i][i];
 		}
 
+		P(printsem);
 		kprintf("{%lu: %u}", num, (unsigned) tot);
+		V(printsem);
 		thread_yield();
 	}
 
