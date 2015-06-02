@@ -98,6 +98,7 @@ sleepalot_thread(void *junk, unsigned long num)
 			wchan_lock(w);
 			wchan_sleep(w);
 		}
+		// Protect critical section (interleaved prints)
 		P(printsem);
 		kprintf("[%lu]", num);
 		V(printsem);
@@ -199,7 +200,7 @@ compute_thread(void *junk1, unsigned long num)
 		for (i=0; i<DIM; i++) {
 			tot += m3->m[i][i];
 		}
-
+		// Protect critical section (interleaved prints)
 		P(printsem);
 		kprintf("{%lu: %u}", num, (unsigned) tot);
 		V(printsem);

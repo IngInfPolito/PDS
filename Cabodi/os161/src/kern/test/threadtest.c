@@ -129,6 +129,7 @@ runthreads(int doloud)
 		P(tsem);
 	}
 	if (!doloud) {
+		// Second phase for loud threads
 		for (i=0; i<NTHREADS; i++) {
 			V(phase2sem);
 		}
