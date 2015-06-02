@@ -24,6 +24,10 @@
 defs.mk
 
 # Ignore object files and build directories
-build/
 *.o
-kern/compile/
+Cabodi/os161/doc/
+Cabodi/os161/root/
+Cabodi/os161/src/build/
+Cabodi/os161/src/kern/compile
+Cabodi/os161/toolbuild/
+Cabodi/os161/tools/
