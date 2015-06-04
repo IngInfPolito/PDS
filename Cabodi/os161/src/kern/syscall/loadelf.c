@@ -299,5 +299,19 @@ load_elf(struct vnode *v, vaddr_t *entrypoint)
 
 	*entrypoint = eh.e_entry;
 
+	/*
+	 * Print address space info for ASST2
+	 */
+	DEBUG(DB_EXEC, "Address space info: entrypoint = 0x%x\n"
+			"Code segment: physical_base = 0x%x, virtual_base = 0x%x, size = %d (number of pages)\n"
+			"Data segment: physical_base = 0x%x, virtual_base = 0x%x, size = %d (number of pages)\n",
+			*entrypoint,
+			curthread->t_addrspace->as_pbase1,
+			curthread->t_addrspace->as_vbase1,
+			curthread->t_addrspace->as_npages1,
+			curthread->t_addrspace->as_pbase2,
+			curthread->t_addrspace->as_vbase2,
+			curthread->t_addrspace->as_npages2);
+
 	return 0;
 }

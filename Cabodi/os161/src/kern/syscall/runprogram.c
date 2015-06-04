@@ -95,6 +95,9 @@ runprogram(char *progname)
 		return result;
 	}
 
+	DEBUG(DB_EXEC, "Stack segment: physical_base = 0x%x, virtual_base = 0x%x\n",
+			curthread->t_addrspace->as_stackpbase, stackptr);
+
 	/* Warp to user mode. */
 	enter_new_process(0 /*argc*/, NULL /*userspace addr of argv*/,
 			  stackptr, entrypoint);
