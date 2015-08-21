@@ -27,38 +27,87 @@
  * SUCH DAMAGE.
  */
 
-#ifndef _SYSCALL_H_
-#define _SYSCALL_H_
-
 #include <types.h>
-
-struct trapframe; /* from <machine/trapframe.h> */
-
-/*
- * The system call dispatcher.
- */
-
-void syscall(struct trapframe *tf);
-
-/*
- * Support functions.
- */
-
-/* Helper for fork(). You write this. */
-void enter_forked_process(struct trapframe *tf);
-
-/* Enter user mode. Does not return. */
-void enter_new_process(int argc, userptr_t argv, vaddr_t stackptr,
-		       vaddr_t entrypoint);
-
+#include <kern/errno.h>
+#include <lib.h>
+#include <spl.h>
+#include <clock.h>
+#include <thread.h>
+#include <current.h>
+#include <syscall.h>
 
 /*
- * Prototypes for IN-KERNEL entry points for system call implementations.
+ * Write syscall.
+ *
+ * Basic implementation that ignores file descriptor and writes directly to the console.
+ *
+ * Returns number of bytes written if successful,
+ * or a negative number on error (errno is set).
  */
 
-int sys_reboot(int code);
-int sys___time(userptr_t user_seconds, userptr_t user_nanoseconds);
-ssize_t sys_read(int fd, const void* buf, size_t nbytes);
-ssize_t sys_write(int fd, const void* buf, size_t nbytes);
+ssize_t sys_write(int fd, const void* buf, size_t nbytes) {
 
-#endif /* _SYSCALL_H_ */
+	int errno;
+	int spl;
+	size_t i;
+
+	(void)fd;
+
+	/* Check if buf is valid */
+	if (!buf) {
+		errno = EFAULT;
+		return errno;
+	}
+
+	/* Do nothing if bytes to write are less than one */
+	if (nbytes < 1) {
+		return 0;
+	}
+
+	putch_prepare();
+
+	for (i = 0; i < nbytes; i++) {
+		putch(((char*)buf)[i]);
+	}
+
+	putch_complete();
+
+	return (ssize_t)i;
+
+}
+
+/*
+ * Read syscall.
+ *
+ * Basic implementation that ignores file descriptor and reads directly from the console.
+ *
+ * Returns number of bytes read if successful,
+ * or a negative number on error (errno is set).
+ */
+
+ssize_t sys_read(int fd, const void* buf, size_t nbytes) {
+
+	int errno;
+	int spl;
+	size_t i;
+
+	(void)fd;
+
+	/* Check if buf is valid */
+	if (!buf) {
+		errno = EFAULT;
+		return errno;
+	}
+
+	/* Do nothing if bytes to read are less than one */
+	if (nbytes < 1) {
+		return 0;
+	}
+
+	for (i = 0; i < nbytes; i++) {
+		((char*)buf)[i] = getch();
+	}
+
+	return (ssize_t)i;
+
+}

@@ -109,6 +109,14 @@ syscall(struct trapframe *tf)
 				 (userptr_t)tf->tf_a1);
 		break;
 
+	    case SYS_read:
+		err = (int)sys_read((int)tf->tf_a0, (const void*)tf->tf_a1, (size_t)tf->tf_a2);
+		break;
+
+	    case SYS_write:
+		err = (int)sys_write((int)tf->tf_a0, (const void*)tf->tf_a1, (size_t)tf->tf_a2);
+		break;
+
 	    /* Add stuff here */
  
 	    default:
@@ -118,7 +126,7 @@ syscall(struct trapframe *tf)
 	}
 
 
-	if (err) {
+	if (err < 0) {
 		/*
 		 * Return the error code. This gets converted at
 		 * userlevel to a return value of -1 and the error
@@ -129,7 +137,7 @@ syscall(struct trapframe *tf)
 	}
 	else {
 		/* Success. */
-		tf->tf_v0 = retval;
+		tf->tf_v0 = err;
 		tf->tf_a3 = 0;      /* signal no error */
 	}
 	
