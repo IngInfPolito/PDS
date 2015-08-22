@@ -112,6 +112,8 @@ struct thread {
 	struct vnode *t_cwd;		/* current working directory */
 
 	/* add more here as needed */
+	/* Thread exit code */
+	int exit_code;
 };
 
 /* Call once during system startup to allocate data structures. */

@@ -109,6 +109,11 @@ syscall(struct trapframe *tf)
 				 (userptr_t)tf->tf_a1);
 		break;
 
+	    case SYS__exit:
+		sys__exit((int)tf->tf_a0);
+		// Not reached
+		break;
+
 	    case SYS_read:
 		err = (int)sys_read((int)tf->tf_a0, (const void*)tf->tf_a1, (size_t)tf->tf_a2);
 		break;

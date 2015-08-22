@@ -27,39 +27,27 @@
  * SUCH DAMAGE.
  */
 
-#ifndef _SYSCALL_H_
-#define _SYSCALL_H_
-
 #include <types.h>
-
-struct trapframe; /* from <machine/trapframe.h> */
-
-/*
- * The system call dispatcher.
- */
-
-void syscall(struct trapframe *tf);
-
-/*
- * Support functions.
- */
-
-/* Helper for fork(). You write this. */
-void enter_forked_process(struct trapframe *tf);
-
-/* Enter user mode. Does not return. */
-void enter_new_process(int argc, userptr_t argv, vaddr_t stackptr,
-		       vaddr_t entrypoint);
-
+#include <kern/errno.h>
+#include <lib.h>
+#include <spl.h>
+#include <clock.h>
+#include <thread.h>
+#include <current.h>
+#include <syscall.h>
 
 /*
- * Prototypes for IN-KERNEL entry points for system call implementations.
+ * Exit syscall.
+ *
+ * Exit the current process, saving exit code.
  */
 
-int sys_reboot(int code);
-int sys___time(userptr_t user_seconds, userptr_t user_nanoseconds);
-void sys__exit(int code);
-ssize_t sys_read(int fd, const void* buf, size_t nbytes);
-ssize_t sys_write(int fd, const void* buf, size_t nbytes);
+void sys__exit(int code) {
 
-#endif /* _SYSCALL_H_ */
+	/* Save exit code */
+	curthread->exit_code = code;
+
+	/* Exit the current thread */
+	thread_exit();
+
+}

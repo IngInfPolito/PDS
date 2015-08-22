@@ -1,0 +1,190 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<html><head>
+	<meta http-equiv="content-type" content="text/html; charset=UTF-8">
+	<title></title>
+	<meta name="generator" content="LibreOffice 4.3.7.2 (Linux)">
+	<meta name="created" content="00:00:00">
+	<meta name="changed" content="2015-05-11T12:47:06.102005981">
+	<meta name="Title" content="">
+	<meta name="created" content="00:00:00">
+	<meta name="changed" content="2015-05-11T12:44:11.197136444">
+	<meta name="created" content="00:00:00">
+	<meta name="changed" content="2015-05-11T12:36:11.022135514">
+	<meta name="CHANGEDBY" content="Gianpiero Cabodi">
+	<style type="text/css">
+		p { color: #000000; font-family: "Times", serif; font-size: 10pt }
+		h1 { margin-top: 0in; margin-bottom: 0in; color: #000000 }
+		p.msonormal { margin-bottom: 0in; font-family: "Times", serif; font-size: 10pt }
+		a:link { color: #0000ff }
+		a:visited { color: #800080 }
+	</style>
+</head>
+<body dir="ltr" style="background: transparent" lang="it-IT" link="#0000ff" text="#000000" vlink="#800080">
+<p>PS 2015 - Laboratorio OS161</p>
+<h1 style="margin-bottom: 0.2in">&nbsp;</h1>
+<h1 style="margin-bottom: 0.2in"><font style="font-size: 24pt" size="6"><b>Rendere
+eseguibile un programma utente in OS161 (ASST3)</b></font></h1>
+<p>Il laboratorio può essere considerato come una prosecuzione dei
+precedenti, relativi a thread e system calls.</p>
+<p>I programmi utente OS161, richiamabili mediante il comando “p
+programma”, &nbsp;ad esempio “<font face="Courier New">p
+testbin/palin”</font>, “<font face="Courier New">p sbin/reboot”,</font>
+non sono eseguibili in modo corretto, in quanto, nella versione base
+di OS161, manca il supporto per</p>
+<p style="margin-left: 0.5in; text-indent: -0.25in"><font face="Symbol">·</font>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+la system call exit</p>
+<p style="margin-left: 0.5in; text-indent: -0.25in"><font face="Symbol">·</font>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+la gestione della memoria virtuale non consente di restituire e
+ri-ottenere memoria</p>
+<p style="margin-left: 0.5in; text-indent: -0.25in"><font face="Symbol">·</font>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+gli argomenti al main (argv, argc)</p>
+<p>Come conseguenza, un programma, che chiama la <font face="Courier New">exit</font>
+al termine della esecuzione, provoca un crash del sistema. Si chiede
+di realizzare il supporto &nbsp;per i punti precedenti.</p>
+<p>Come ulteriore osservazione, si consideri la modalità di
+attivazione di un nuovo thread &nbsp;da parte della <font face="Courier New">menu_execute</font>,
+alla chiamata di <font face="Courier New">cmd_dispatch</font>, per
+rispondere al comando “p ….”.</p>
+<p>Questa attiva un nuovo thread mediante <font face="Courier New">thread_fork,
+</font>&nbsp;nella funzione <font face="Courier New">common_prog</font>,
+da cui si esce SENZA attendere il termine del thread. Il nuovo thread
+esegue la funzione <font face="Courier New">cmd_progthread</font>
+(che a sua volta chiama <font face="Courier New">runprogram).</font></p>
+<p>Ciò fa si che il menu passi direttamente ad attendere l’input
+di un nuovo comando (questo puo creare problemi in quanto l’input
+del menu si sovrappone all’eventuale input del programma utente
+attivato), ma soprattutto che NESSUNO chiami la
+pulizia/de-allocazione della memoria allocata al thread. 
+</p>
+<p><font style="font-size: 20pt" size="5"><b>System call _exit</b></font></p>
+<p>Il supporto per la _<font face="Courier New">exit</font> (chiamata
+dalla <font face="Courier New">exit</font> C) si ottiene lavorando in
+modo simile alle system call <font face="Courier New">read</font> e
+<font face="Courier New">write</font>. La funzione C <font face="Courier New">exit</font>
+(file <font face="Courier New">user/lib/libc/stdlib/exit.c</font>)
+riceve un unico parametro intero (il codice di errore/successo). 
+</p>
+<p>Il suo compito è quello di</p>
+<p style="margin-left: 0.5in; text-indent: -0.25in"><font face="Symbol">·</font>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mettere questo codice nel campo previsto del descrittore di
+processo/thread (<font face="Courier New">struct thread o</font>
+<font face="Courier New">curthread</font>, si veda
+<font face="Courier New">kern/include/thread.h</font>). Tale codice
+dovrà eventualmente essere letto da un altro thread.</p>
+<p style="margin-left: 0.5in; text-indent: -0.25in"><font face="Symbol">·</font>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+Far terminare il thread che chiama la <font face="Courier New">exit</font>,
+chiamando la funzione <font face="Courier New">thread_exit</font>
+(file <font face="Courier New">thread.c</font>), la quale pulisce la
+struttura dati del thread chiamante e lo manda in stato di zombie. Il
+descrittore del thread non viene distrutto (è quindi ancora
+leggibile da un altro thread). La distruzione vera e propria sarà
+effettuate dalla <font face="Courier New">thread_distroy</font>,
+chiamata dalla <font face="Courier New">exorcise</font> alla
+successiva <font face="Courier New">thread_switch</font>.</p>
+<p style="margin-left: 0.5in; text-indent: -0.25in"><font face="Symbol">·</font>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<i><b>(punto opzionale)</b></i> sarebbe necessario realizzare inoltre
+il supporto per la <font face="Courier New">waitpid</font>, per fare
+in modo che il thread, prima di terminare, attenda la chiusura di
+eventuali thread figli, e perché la <font face="Courier New">common_prog</font>
+(che realizza il comando “<font face="Courier New">p programma”</font>)
+&nbsp;possa aspettare la fine del thread attivato. Si consiglia di
+realizzare &nbsp;la <font face="Courier New">waitpid </font>solo dopo
+aver eventualmente terminato il resto del laboratorio. A tale scopo è
+necessario utilizzare una tabella dei processi/thread attivi e un
+meccanismo di polling o sincronizzazione per l’attesa.</p>
+<p><font style="font-size: 20pt" size="5"><b>Gestione della memoria
+virtuale</b></font> 
+</p>
+<p>Os161, nella versione base contiene un gestore di memoria virtuale
+che effettua unicamente allocazione contigua di memoria reale, senza
+mai rilasciarla (si veda il file <font face="Courier New">kern/arch/mips/vm/dumbvm.c</font>).
+Ad ogni chiamata a <font face="Courier New">getppages/ram_stealmem
+</font>viene allocato un nuovo intervallo nella ram fisica, che non
+verrà più rilasciato.</p>
+<p>Si consiglia di realizzare un allocatore di memoria contigua, che,
+anziché utilizzare unicamente le funzioni <font face="Courier New">getppages/ram_stealmem</font>
+nella versione attuale, le modifichi, mantenendo una lista di
+partizioni libere, in modo da poter restituire memoria alla chiusura
+di un thread (andranno modificate, quanto meno, la funzione <font face="Courier New">as_create</font>
+(per inizializzare le struttura dati) la <font face="Courier New">as_destroy</font>
+(per restituire memoria), la <font face="Courier New">getppages</font>
+e/o la <font face="Courier New">ram_stealmem</font> (per allocare
+memoria fisica contigua).</p>
+<p><font style="font-size: 20pt" size="5"><b>Passaggio degli
+argomenti al main</b></font></p>
+<p class="msonormal" style="margin-bottom: 0.2in"><font style="font-size: 10pt" size="2"><font face="Times New Roman, serif">Per
+passare gli argomenti (</font><font face="Courier New">argv</font><font face="Times New Roman, serif">)
+a un programma utente occorre caricare gli argomenti nello spazio di
+indirizzamento del programma: sia le stringhe che il vettore di
+argomenti </font><font face="Courier New">argv (un vettore di
+puntatori).</font></font></p>
+<p class="msonormal" style="margin-bottom: 0.2in"><font face="Times New Roman, serif"><font style="font-size: 10pt" size="2">Attenzione!
+Un char può essere collocate in un qualunque indirizzo virtuale,
+mentre un puntatore deve essere ad un indirizzo multiplo di 4,</font></font></p>
+<p class="msonormal" style="margin-bottom: 0.2in"><font style="font-size: 10pt" size="2"><font face="Times New Roman, serif">Un
+vincolo simile esiste per lo stack pointer, che deve essere ad un
+indirizzo multiplo di 8 (in quanto i tati più grandi rappresentabili
+(double) sono di 8 byte)..</font></font></p>
+<p class="msonormal" style="margin-bottom: 0.2in"><font face="Times New Roman, serif"><font style="font-size: 10pt" size="2">Per
+comprendere come funziona il passaggio di </font></font><font face="Courier New"><font style="font-size: 10pt" size="2">argv</font></font><font style="font-size: 10pt" size="2">
+</font><font face="Times New Roman, serif"><font style="font-size: 10pt" size="2">and
+</font></font><font face="Courier New"><font style="font-size: 10pt" size="2">argc,
+</font></font><font face="Times New Roman, serif"><font style="font-size: 10pt" size="2">si
+consideri, ad esempio, </font></font><font face="Courier New"><font style="font-size: 10pt" size="2">testbin/tail</font></font><font face="Times New Roman, serif"><font style="font-size: 10pt" size="2">,
+che vuole due argomenti. </font></font><font face="Times New Roman, serif"><font style="font-size: 10pt" size="2"><span lang="en-US">Il
+</span></font></font><font face="Courier New"><font style="font-size: 10pt" size="2"><span lang="en-US">main()</span></font></font><font style="font-size: 10pt" size="2">
+</font><font face="Times New Roman, serif"><font style="font-size: 10pt" size="2"><span lang="en-US">di
+</span></font></font><font face="Courier New"><font style="font-size: 10pt" size="2"><span lang="en-US">tail</span></font></font><font style="font-size: 10pt" size="2">
+</font><font face="Times New Roman, serif"><font style="font-size: 10pt" size="2"><span lang="en-US">è:
+</span></font></font>
+</p>
+<p class="msonormal" style="margin-bottom: 0.2in" lang="en-US"><font face="Courier New">int</font></p>
+<p class="msonormal" style="margin-bottom: 0.2in" lang="en-US"><font face="Courier New">main(int
+argc, char **argv)</font></p>
+<p class="msonormal" style="margin-bottom: 0.2in" lang="en-US"><font face="Courier New">{</font></p>
+<p class="msonormal" style="margin-bottom: 0.2in">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<font face="Courier New"><span lang="en-US">int file;</span></font></p>
+<p class="msonormal" style="margin-bottom: 0.2in">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<font face="Courier New"><span lang="en-US">if (argc &lt; 3) {</span></font></p>
+<p class="msonormal" style="margin-bottom: 0.2in">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<font face="Courier New"><span lang="en-US">errx(1, "Usage:
+tail&nbsp; ");</span></font></p>
+<p class="msonormal" style="margin-bottom: 0.2in">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<font face="Courier New"><span lang="en-US">}</span></font></p>
+<p class="msonormal" style="margin-bottom: 0.2in">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<font face="Courier New"><span lang="en-US">file = open(argv[1],
+O_RDONLY);</span></font></p>
+<p class="msonormal" style="margin-bottom: 0.2in">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<font face="Courier New"><span lang="en-US">if (file &lt; 0) {</span></font></p>
+<p class="msonormal" style="margin-bottom: 0.2in">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<font face="Courier New"><span lang="en-US">err(1, "%s",
+argv[1]);</span></font></p>
+<p class="msonormal" style="margin-bottom: 0.2in">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<font face="Courier New"><span lang="en-US">}</span></font></p>
+<p class="msonormal" style="margin-bottom: 0.2in">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<font face="Courier New"><span lang="en-US">tail(file, atoi(argv[2]),
+argv[1]);</span></font></p>
+<p class="msonormal" style="margin-bottom: 0.2in">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<font face="Courier New"><span lang="en-US">close(file);</span></font></p>
+<p class="msonormal" style="margin-bottom: 0.2in">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<font face="Courier New">return 0;</font></p>
+<p class="msonormal" style="margin-bottom: 0.2in"><font face="Courier New">}</font></p>
+<p class="msonormal" style="margin-bottom: 0.2in">&nbsp;</p>
+<p class="msonormal" style="margin-bottom: 0.2in"><font style="font-size: 10pt" size="2"><font face="Courier New">argv</font>
+<font face="Times New Roman, serif">è un puntatore a puntatore a
+char – punta a un vettore di puntatori a carattere, ognuno dei
+quali punta a uno degli argomenti. Ad esempio, se </font><font face="Courier New">tail</font>
+<font face="Times New Roman, serif">fosse chiamato con una linea di
+comando: </font></font>
+</p>
+<p class="msonormal" style="margin-bottom: 0.2in" lang="en-US"><font face="Courier New">OS/161
+kernel [? for menu]: p testbin/sort foo 100</font></p>
+<p><font style="font-size: 10pt" size="2"><font face="Times New Roman, serif">Le
+variabili &nbsp;</font><font face="Courier New">argv</font> <font face="Times New Roman, serif">and
+</font><font face="Courier New">argc</font> <font face="Times New Roman, serif">sarebbero
+come nella figura: </font></font>
+</p>
+<p><font face="Times New Roman, serif"><font style="font-size: 12pt" size="3"><br></font></font>&nbsp;<img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAhYAAAC9CAIAAABgYaOAAAAACXBIWXMAAAxNAAAMTQHSzq1OAAAIu0lEQVR4nO3d65KrIBYG0HRVv/8r93SPcyxHE4M7Ihtc61dfhBhJ+ARv3z8/Pw8AOO679QoA0CsRAkCQCAEgqEqEfH19zT/Px1qmP/7+Ov+wWnK5/HKZubjDNgCpnB8hq4RYdf3LX7dZMv9rThoA0jo/QvbHCq/+O2XGq7wxBAFIqNaxEGMIgOHVOhby6lDHzsIr81yWIQhATlWOhRT2+FNIrA6wb2s7ef0AOEnFk3rf9v5z2OwfIDEEAcip4km9y5mo5b9WB8yXBaUFQEfqnpH1NhJWC2zHHEIFIK1mV6c7yAHQu0Q3OBEqAH1pFiHztYSrP7ZaHwCOajkKERgAXUs0kQVAX0QIAEEiBIAgEQJA0PdNTqUd+9D9TRpxNnZr7rtbW5Pc3yhk+C/kHb51wzfi7A6tue9QWx+9y1zV5VOtzNGCqVYmvPy5dx38rc1EFgBBIgSAIBECQJAIASBIhAAQJEIACBIhAASJEACCRAjQxnSV6NEr3WKlAs69Ci+PV+9redFu+RsXIQBrY98EYZUiq1SeHgZYmCIipAe/DTzi3hBPfNDWefaaq67JZe8xycY8pGTLT0+MPesVRUgn5ibv8GPNMaG2zrPXnGdN7ia25bcTg/NTyUtCVIT0ZvkpESdjK27rue8o/NoHZr0Lixxdk1WpknsdFi75WHSOh0o9ivvio5txVW3gLZy45c8aKbaOkEt2WH6ueqGrzV+Mpq9+sWFbc9/uWy7pYhY1fR2d9V4VOWtNVpWXrExgEuZQ/csXKqz2URY5nxxvODQ9VVLniXNZrSPkkv3oPHPEQe8a+6tJijTapN235r5L0vGT7uP0jT9XeGj+JFB/PYWDp/BkUeYPfOsI4RPzB+uGe+W3suxBPmvr2BmxgbFFvwrzdYBtckpai5DedPt55bBMbT3PBT167jQLHZrs6nSbnDWXJUI60dsHlLiabf2043i7NzovUGmuqUeBbZJzu23X/1AoipAe5PvYUcvlRwfz9GsZducrnZG8Te4Mb/ZxRuuLEBhH+ak7n5znetY5o6s1Kam5/NTV1ZLlBQPnIpeUqvpmV6XKJ+KWJw0f/UhMRAiM4NDXPnA4PcPCh5ZfLXnWubyBJcNFai+/LBIei4gQAIJECABBIgSAIBECQJAIASBIhAAQJEIACBIhAAT9RUila/q5kka8j8ADM/Isn2pljhZMtTLh5c/tK76b36SFU9ynHW8elvdpaLpgIguAIBECQJAIASBIhAAQJEIACBIhAASJEACCRAgAQSIEgCARAkCQCAEgSIQAECRCAAgSIQAEiRCiGt10/afdS7/nTuzcjAghqlF3+fX1lfSZGWmDDaoRIQAEiRAAgkQIAEEiBIAgEQJAkAgBIEiEABAkQgAIEiEABIkQAIJECABBIgSAIBECQJAIASBIhAziy53G7+FuDZ30xv78I0IGcZ9v2t360K1DbR1+vMr1BZ9WdUo91CNCAAgSIQAEiRAAgkQIAEEiBIAgEQJAkAgBIEiEABAkQmAcy2vxml9t+uoaw1QryYdECAxi6pqnTjnJdd2rFFmu4fTriZey04QIgUx+O9kzutQM/fLvOiRJMuoRIZDM3O0miIETrYYgj38ZYyDSNRECWS134Xc72eXOfmGPvBofFHbigVISYmwiBM5Tb95mt+bl8Y/y/Dh6TCJQylzW8EQInOSUfe36HW5sQsk0FE+JEEhv2Ud3uFMvZgYmQiCrIbpdc1lj+75J69oJOl+jT85PvZdO8iG5ZDViI4NPxhPbia/ygzek9TcKGb4JbxKTV2v0sak1K5LkQ1J/q26HBSVdeazUcuHh+5l7MpEF3Tt6Uu88IFj+5e2rxEo9FvGzqkGoDECEQPcCfXGs+/5kFuvDGshJhAAQJEIACBIhAASJEACCRAgAQSIEgCARAkCQCAEgSIQMwk1c7uNoW4c/G9cXpDstIyRwpwReuc8GvHn3dJ+GpgvNImR1w053YQPojoksAIKaRYgxB0Dv2o9CPHYGoFONI2Q+NOpYCEB3GkfIFBtTkEgRgL60n8h6PHumJgD5pYgQAHokQgAIShEhTsq63qtbA+zPKC6vBn27zKs6NTQMo+XV6fPP+pTrLU9kePr3ba4s/7JdbGc/YPla2hpG4tJCnAsHBKWYyKKh6XQ4KQIEiBCkCBAkQgAIEiH8MRABAkQI/yNFgKP+IsTNRZjMKdJ6RYA+fNvlZOn0+5W9HdYY90C/TGTx3tM5rpKuX37A2ETITe08qeXpQGQ7x/X0ZidPRzBvFwA6JUJuan/ff+c+JUerKlkA6JQIASBIhAAQJEIACBIhAASJEACCRAgAQSIEgKC6EbJzJdp8/dr+E1hX9bjCACCPihGySoid22Nss+TVv9wP4xVXfQPXqxghgeufH/9/O6ZVnAiPV2wZoInqx0LsHQOMqvqxkFeHOnYWBqALdY+FFEbCNGe1nbn6sFoAqrripN63Q5A5FZ7edXx14F1+ACRxxUm98/Bi9dyIp6ftTpaH0JePqZAfAHlcdEbW0UdKLANGbADk1P7qdKdsAXSqfYRsCRV45bbfDrMRObWPkO1DuR8+LvBa7NsRPhXl+oJPqzqlHk7XPkIeAgOgTykiBIAeiRAAgkQIAEEiBIAgEQJAkAgBIEiEABAkQgAIEiEwlJKH7jwtMikvWF7q1WXqsdclFRECgwjcBWSVN6vH85xY6unDHY6+LgmJEBhE+UOmLzY/MYjxiBC4qe2U1/Y5oWeVOrcG8hAhwBUkxJBECFCduaxRiRAAgkQIcBFzWeMRIZDJNNszYj9rLmtIIgTymbvamlmyPQ+q5LLEWKlzayAPEQKJXZIlVzKXNRgRAv9knmYpWLflNFFhTz0PCOZfS9YlVuqxmMsK10A2IgT+K0kvth8Vvyv5eoFYR3xlqWVBsTEGEQK56WpJTIRASpKDHogQyERy0BURAkCQCAEgSIQAECRCAAgSIQAEiRDoTPhmhR0VpBf/ASMjFlBoQxb7AAAAAElFTkSuQmCC" name="Image3" align="bottom" border="0" height="189" width="534"></p>
+<p><a href="https://www.student.cs.uwaterloo.ca/%7Ecs350/F09/argvargc.png">https://www.student.cs.uwaterloo.ca/~cs350/F09/argvargc.png</a></p>
+
+</body></html>
