@@ -69,7 +69,7 @@ ram_bootstrap(void)
 	 */
 	firstpaddr = firstfree - MIPS_KSEG0;
 
-	kprintf("%uk physical memory available\n", 
+	kprintf("%uk physical memory available\n",
 		(lastpaddr-firstpaddr)/1024);
 }
 

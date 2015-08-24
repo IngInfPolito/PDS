@@ -66,6 +66,7 @@
  * a valid address, and will make a *huge* mess if you scribble on it.
  */
 #define PADDR_TO_KVADDR(paddr) ((paddr)+MIPS_KSEG0)
+#define KVADDR_TO_PADDR(vaddr) ((vaddr)-MIPS_KSEG0)
 
 /*
  * The top of user space. (Actually, the address immediately above the
@@ -82,6 +83,9 @@
  * grows downwards.
  */
 #define USERSTACK     USERSPACETOP
+
+/* Always have 48k of user stack */
+#define VM_STACKPAGES    12
 
 /*
  * Interface to the low-level module that looks after the amount of

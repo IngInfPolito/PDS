@@ -44,12 +44,47 @@
 #define VM_FAULT_WRITE       1    /* A write was attempted */
 #define VM_FAULT_READONLY    2    /* A write to a readonly page was attempted*/
 
+/* Space reserved for VM structures (in number of pages) */
+#define VM_PAGES 16
+#define MAX_NODES ((VM_PAGES * PAGE_SIZE) / sizeof(node_t))
+
+/* VM data structures (contiguous allocator) */
+typedef struct node_s node_t;
+
+/* List of memory blocks */
+struct node_s {
+	paddr_t addr;
+	size_t pages;
+	node_t* next;
+};
+
+/* Policy for choosing free block */
+typedef enum {
+	first_fit,
+	best_fit,
+	worst_fit
+} mem_policy_t;
+
+/* Memory model */
+typedef struct memory_s {
+	paddr_t start;
+	paddr_t end;
+	size_t pages;
+	size_t free_pages;
+	node_t* free_blks;
+	node_t* used_blks;
+	mem_policy_t policy;
+} memory_t;
 
 /* Initialization function */
 void vm_bootstrap(void);
 
 /* Fault handling function called by trap code */
 int vm_fault(int faulttype, vaddr_t faultaddress);
+
+/* Allocate/free physical pages */
+paddr_t alloc_ppages(int npages);
+void free_ppages(paddr_t addr);
 
 /* Allocate/free kernel heap pages (called by kmalloc/kfree) */
 vaddr_t alloc_kpages(int npages);
