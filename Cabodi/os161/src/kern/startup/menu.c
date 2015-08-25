@@ -91,16 +91,12 @@ cmd_progthread(void *ptr, unsigned long nargs)
 
 	KASSERT(nargs >= 1);
 
-	if (nargs > 2) {
-		kprintf("Warning: argument passing from menu not supported\n");
-	}
-
 	/* Hope we fit. */
 	KASSERT(strlen(args[0]) < sizeof(progname));
 
 	strcpy(progname, args[0]);
 
-	result = runprogram(progname);
+	result = runprogram(progname, nargs, args);
 	if (result) {
 		kprintf("Running program %s failed: %s\n", args[0],
 			strerror(result));
@@ -126,16 +122,28 @@ static
 int
 common_prog(int nargs, char **args)
 {
-	int result;
+	int result, i;
+	char** argscopy;
 
 #if OPT_SYNCHPROBS
 	kprintf("Warning: this probably won't work with a "
 		"synchronization-problems kernel.\n");
 #endif
 
+	/* 
+	 * Make a copy of args to prevent race conditions until no synchronization is implemented.
+	 * "args" is on the current stack, so may not be valid if cmd_dispatch returns before
+	 * user program reads it from the other thread.
+	 */
+	argscopy = (char**)kmalloc(nargs * sizeof(char*));
+	for (i = 0; i < nargs; i++) {
+		argscopy[i] = (char*)kmalloc(strlen(args[i]) + 1);
+		strcpy(argscopy[i], args[i]);
+	}
+
 	result = thread_fork(args[0] /* thread name */,
 			cmd_progthread /* thread function */,
-			args /* thread arg */, nargs /* thread arg */,
+			argscopy /* thread arg */, nargs /* thread arg */,
 			NULL);
 	if (result) {
 		kprintf("thread_fork failed: %s\n", strerror(result));

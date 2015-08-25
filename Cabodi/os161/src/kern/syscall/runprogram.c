@@ -52,11 +52,15 @@
  * Calls vfs_open on progname and thus may destroy it.
  */
 int
-runprogram(char *progname)
+runprogram(char *progname, int argc, char** argv)
 {
 	struct vnode *v;
 	vaddr_t entrypoint, stackptr;
 	int result;
+	char** stackargv;
+	char* stackarg;
+	int i;
+	size_t len;
 
 	/* Open the file. */
 	result = vfs_open(progname, O_RDONLY, 0, &v);
@@ -98,9 +102,29 @@ runprogram(char *progname)
 	DEBUG(DB_EXEC, "Stack segment: physical_base = 0x%x, virtual_base = 0x%x\n",
 			curthread->t_addrspace->as_stackpbase, stackptr);
 
+	/* Leave space for argument pointers */
+	stackargv = (char**)(stackptr - (argc + 1) * sizeof(char*));
+	stackargv[argc] = NULL;
+	/* Save each string argument (with null terminator) and argv pointers */
+	stackarg = (char*)stackargv;
+	for (i = 0; i < argc; i++) {
+		len = strlen(argv[i]);
+		stackarg -= (len / 4 + 1) * 4; // Aligned to 4 byte
+		stackargv[i] = stackarg;
+		copyout(argv[i], (userptr_t)stackargv[i], len);
+	}
+	/* Update stackptr and align to 8 byte */
+	stackptr = stackarg;
+	stackptr &= ~0x07;
+
+	/* Free kernel memory */
+	for (i = 0; i < argc; i++) {
+		kfree(argv[i]);
+	}
+	kfree(argv);
+
 	/* Warp to user mode. */
-	enter_new_process(0 /*argc*/, NULL /*userspace addr of argv*/,
-			  stackptr, entrypoint);
+	enter_new_process(argc, stackargv, stackptr, entrypoint);
 	
 	/* enter_new_process does not return. */
 	panic("enter_new_process returned\n");

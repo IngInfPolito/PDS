@@ -351,13 +351,13 @@ int vm_fault(int faulttype, vaddr_t faultaddress) {
 		}
 		ehi = faultaddress;
 		elo = paddr | TLBLO_DIRTY | TLBLO_VALID;
-		DEBUG(DB_VM, "dumbvm: 0x%x -> 0x%x\n", faultaddress, paddr);
+		DEBUG(DB_VM, "TLB write entry: 0x%x -> 0x%x\n", faultaddress, paddr);
 		tlb_write(ehi, elo, i);
 		splx(spl);
 		return 0;
 	}
 
-	kprintf("dumbvm: Ran out of TLB entries - cannot handle page fault\n");
+	kprintf("Ran out of TLB entries - cannot handle page fault\n");
 	splx(spl);
 	return EFAULT;
 }
