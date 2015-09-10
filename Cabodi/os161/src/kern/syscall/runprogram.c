@@ -99,8 +99,22 @@ runprogram(char *progname, int argc, char** argv)
 		return result;
 	}
 
-	DEBUG(DB_EXEC, "Stack segment: physical_base = 0x%x, virtual_base = 0x%x\n",
-			curthread->t_addrspace->as_stackpbase, stackptr);
+	/*
+	 * Print address space info for ASST2
+	 */
+	DEBUG(DB_EXEC, "Address space info: entrypoint = 0x%x\n"
+			"Code segment: physical_base = 0x%x, virtual_base = 0x%x, size = %d (number of pages)\n"
+			"Data segment: physical_base = 0x%x, virtual_base = 0x%x, size = %d (number of pages)\n"
+			"Stack segment: physical_base = 0x%x, virtual_base = 0x%x\n",
+			entrypoint,
+			curthread->t_addrspace->as_pbase1,
+			curthread->t_addrspace->as_vbase1,
+			curthread->t_addrspace->as_npages1,
+			curthread->t_addrspace->as_pbase2,
+			curthread->t_addrspace->as_vbase2,
+			curthread->t_addrspace->as_npages2,
+			curthread->t_addrspace->as_stackpbase,
+			stackptr);
 
 	/* Leave space for argument pointers */
 	stackargv = (char**)(stackptr - (argc + 1) * sizeof(char*));
